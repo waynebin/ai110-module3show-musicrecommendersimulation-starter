@@ -1,0 +1,104 @@
+# Music Recommender System Design
+
+## System Flow Diagram
+
+This diagram illustrates how the content-based music recommender processes songs from the CSV file to produce ranked recommendations.
+
+```mermaid
+flowchart TD
+    Start([Start Recommendation Process]) --> LoadCSV[Load songs.csv]
+    LoadCSV --> CSV[(CSV File<br/>20 Songs with Features)]
+    
+    CSV --> UserPrefs[/"User Profile Input:<br/>• favorite_genre: lofi<br/>• favorite_mood: chill<br/>• target_energy: 0.4<br/>• likes_acoustic: true"/]
+    
+    UserPrefs --> InitLoop{For Each Song<br/>in CSV}
+    
+    InitLoop -->|Song 1-20| ExtractFeatures["Extract Song Features:<br/>• genre<br/>• mood<br/>• energy<br/>• acousticness<br/>• valence, danceability, etc."]
+    
+    ExtractFeatures --> ScoreGenre["🎵 Genre Match Score<br/>If song.genre == user.favorite_genre<br/>Score += 2.0<br/>Else Score += 0.0"]
+    
+    ScoreGenre --> ScoreMood["🎭 Mood Match Score<br/>If song.mood == user.favorite_mood<br/>Score += 1.5<br/>Else Score += 0.0"]
+    
+    ScoreMood --> ScoreEnergy["⚡ Energy Similarity Score<br/>similarity = 1.0 - |user.target_energy - song.energy|<br/>Score += 1.0 × similarity"]
+    
+    ScoreEnergy --> ScoreAcoustic["🎸 Acoustic Bonus<br/>If user.likes_acoustic AND song.acousticness > 0.5<br/>Score += 0.5<br/>Else Score += 0.0"]
+    
+    ScoreAcoustic --> TotalScore["Calculate Total Score<br/>total = genre + mood + energy + acoustic"]
+    
+    TotalScore --> StoreSong["Store: (song, total_score)"]
+    
+    StoreSong --> CheckMore{More Songs<br/>to Process?}
+    
+    CheckMore -->|Yes| InitLoop
+    CheckMore -->|No| SortScores["Sort All Songs by Score<br/>(Highest to Lowest)"]
+    
+    SortScores --> SelectTop["Select Top K Songs<br/>(Default K = 5)"]
+    
+    SelectTop --> GenerateExplanations["Generate Explanations<br/>For Each Recommendation"]
+    
+    GenerateExplanations --> Output[/"📋 Output:<br/>Ranked List of Top K Songs<br/>with Scores & Explanations"/]
+    
+    Output --> End([End])
+    
+    style Start fill:#e1f5e1
+    style End fill:#ffe1e1
+    style UserPrefs fill:#e3f2fd
+    style CSV fill:#fff3e0
+    style Output fill:#f3e5f5
+    style ScoreGenre fill:#ffebee
+    style ScoreMood fill:#fff9c4
+    style ScoreEnergy fill:#e0f2f1
+    style ScoreAcoustic fill:#fce4ec
+    style SortScores fill:#e8eaf6
+    style SelectTop fill:#e8f5e9
+```
+
+## Process Overview
+
+### 1. Input Phase
+- **CSV Data**: Load all 20 songs with their features (genre, mood, energy, acousticness, etc.)
+- **User Profile**: Accept user preferences defining their taste profile
+
+### 2. Processing Loop
+For each song in the CSV:
+1. **Extract Features**: Read the song's attributes
+2. **Genre Matching**: Award 2.0 points for exact genre match
+3. **Mood Matching**: Award 1.5 points for exact mood match
+4. **Energy Similarity**: Calculate distance-based score (1.0 - |difference|)
+5. **Acoustic Preference**: Add 0.5 bonus if acousticness aligns with user preference
+6. **Total Score**: Sum all component scores
+
+### 3. Output Phase
+- **Sort**: Rank all songs by total score (descending)
+- **Select Top K**: Choose the top 5 (or K) songs
+- **Explain**: Generate human-readable explanations for each recommendation
+- **Return**: Provide ranked list with scores and explanations
+
+## Scoring Formula
+
+```
+total_score = (
+    genre_weight × genre_match +          # 2.0 if match, 0.0 otherwise
+    mood_weight × mood_match +            # 1.5 if match, 0.0 otherwise
+    energy_weight × energy_similarity +   # 1.0 × (1 - |user.energy - song.energy|)
+    acoustic_bonus                        # 0.5 if preference matches
+)
+```
+
+## Example Trajectory
+
+For the user profile `{genre: "lofi", mood: "chill", energy: 0.4, likes_acoustic: true}`:
+
+**Song: "Library Rain"**
+- Genre: lofi ✅ → +2.0
+- Mood: chill ✅ → +1.5
+- Energy: 0.35 (distance: 0.05) → +0.95
+- Acousticness: 0.86 (user likes acoustic) → +0.5
+- **Total Score: 4.95** → Very likely to be recommended!
+
+**Song: "Storm Runner"**
+- Genre: rock ❌ → +0.0
+- Mood: intense ❌ → +0.0
+- Energy: 0.91 (distance: 0.51) → +0.49
+- Acousticness: 0.10 (doesn't match preference) → +0.0
+- **Total Score: 0.49** → Unlikely to be recommended
